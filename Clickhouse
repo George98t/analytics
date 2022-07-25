@@ -95,7 +95,7 @@ select appsflyer_id,
        banner_click,
        banner_scrn,
        motiv_accept
-from (
+from ( 
       select appsflyer_id,
              date,
              platform,
