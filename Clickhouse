@@ -1,0 +1,515 @@
+-- //// The main aim of code - to find and filter necessary events, and group by each chain for further formation of funnels according to the data
+
+
+
+select appsflyer_id,
+       date,
+       platform,
+       app_version,
+       evnts_logins_prepared,
+       splitted_event_names,
+       dok16_events,
+       showidea_events,
+       login_01,
+       showcase_021,
+       allshowcase_022,
+       pluschoose_031,
+       pluspopolnit_032,
+       plusproduct_033,
+       plusproduct_034,
+       mainidea_041,
+       mainideainv_042,
+       mainideapr_043,
+       showidea_051,
+       shiwideainv_052,
+       showideapr_053,
+       neopl_06,
+       dokport_07,
+       plusclck_08,
+       productPIF_09,
+       productDU_09,
+       productIIS_09,
+       if(productPIF_09 + productDU_09 + productIIS_09 > 0, 1, product_09)     as product_09,
+       investPIF_10,
+       investDU_10,
+       investIIS_10,
+       if(investPIF_10 + investDU_10 + investIIS_10 > 0, 1, invest_10)         as invest_10,
+       passportPIF_11,
+       passportDU_11,
+       passportIIS_11,
+       if(passportPIF_11 + passportDU_11 + passportIIS_11 > 0, 1, passport_11) as passport_11,
+       smsPIF_12,
+       smsDU_12,
+       smsIIS_12,
+       if(smsPIF_12 + smsDU_12 + smsIIS_12 > 0, 1, sms_12)                     as sms_12,
+       paymscr_13,
+       applyPIF_14,
+       applyDU_14,
+       applyIIS_14,
+       if(applyPIF_14 + applyDU_14 + applyIIS_14 > 0, 1, apply_14)             as apply_14,
+       scspaynPIF_15,
+       scspaynDU_15,
+       scspaynIIS_15,
+       if(scspaynPIF_15 + scspaynDU_15 + scspaynIIS_15 > 0, 1, scspayn_15)     as scspayn_15,
+       scspaydPIF_15,
+       scspaydDU_15,
+       scspaydIIS_15,
+       if(scspaydPIF_15 + scspaydDU_15 + scspaydIIS_15 > 0, 1, scspayd_15)     as scspayd_15,
+
+       -- //// looking for events which will be in range +10 and -40 sec from target event, and correcting status of event
+
+       if(dokcard_16 > 0 and length(dok16_events) > 0 and
+          arrayReduce('sum', arrayMap(
+                  (x)->
+                      if(
+                                  addSeconds(x, -40) between arrayReduce('min', showidea_events) and arrayReduce('max', showidea_events)
+                                  and
+                                  addSeconds(x, 10) between arrayReduce('min', showidea_events) and arrayReduce('max', showidea_events),
+                                  1, 0)
+              ,
+                  dok16_events)) = 0, 1, 0)                                    as dokcard_16,
+       if(dokmenu_16 > 0 and length(dok16_events) > 0 and
+          arrayReduce('sum', arrayMap(
+                  (x)->
+                      if(
+                                  addSeconds(x, -40) between arrayReduce('min', showidea_events) and arrayReduce('max', showidea_events)
+                                  and
+                                  addSeconds(x, 10) between arrayReduce('min', showidea_events) and arrayReduce('max', showidea_events),
+                                  1, 0)
+              ,
+                  dok16_events)) = 0, 1, 0)                                    as dokmenu_16,
+       if(dokcard_16 + dokmenu_16 + dok_16 > 0 and length(dok16_events) > 0 and
+          arrayReduce('sum', arrayMap(
+                  (x)->
+                      if(
+                                  addSeconds(x, -40) between arrayReduce('min', showidea_events) and arrayReduce('max', showidea_events)
+                                  and
+                                  addSeconds(x, 10) between arrayReduce('min', showidea_events) and arrayReduce('max', showidea_events),
+                                  1, 0)
+              ,
+                  dok16_events)) = 0, 1, 0)                                    as dok_16,
+       buyPIF_17,
+       buyDU_17,
+       buyIIS_17,
+       if(buyPIF_17 + buyDU_17 + buyIIS_17 > 0, 1, buy_17)                     as buy_17,
+       banner_click,
+       banner_scrn,
+       motiv_accept
+from (
+      select appsflyer_id,
+             date,
+             platform,
+             app_version,
+             evnts_logins_prepared,
+             splitted_event_names,
+             dok16_events,
+             showidea_events,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names), '01login') as login_01,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '021showcase')                                                                        as showcase_021,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '022allshowcase')                                                                     as allshowcase_022,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '031pluschoose')                                                                      as pluschoose_031,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '032pluspopolnit')                                                                    as pluspopolnit_032,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '033plusproduct')                                                                     as plusproduct_033,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '034productscrn')                                                                     as plusproduct_034,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '041mainidea')                                                                        as mainidea_041,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '042mainideainv')                                                                     as mainideainv_042,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '043mainideapr')                                                                      as mainideapr_043,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '051showidea')                                                                        as showidea_051,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '052shiwideainv')                                                                     as shiwideainv_052,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '053showideapr')                                                                      as showideapr_053,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '06neopl')                                                                            as neopl_06,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '07dokport')                                                                          as dokport_07,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '08plusclck')                                                                         as plusclck_08,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '09productPIF')                                                                       as productPIF_09,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '09productDU')                                                                        as productDU_09,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '09productIIS')                                                                       as productIIS_09,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '09product')                                                                          as product_09,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '10investPIF')                                                                        as investPIF_10,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '10investDU')                                                                         as investDU_10,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '10investIIS')                                                                        as investIIS_10,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '10invest')                                                                           as invest_10,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '11passportPIF')                                                                      as passportPIF_11,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '11passportDU')                                                                       as passportDU_11,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '11passportIIS')                                                                      as passportIIS_11,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '11passport')                                                                         as passport_11,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '12smsPIF')                                                                           as smsPIF_12,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '12smsDU')                                                                            as smsDU_12,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '12smsIIS')                                                                           as smsIIS_12,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names), '12sms')   as sms_12,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '13paymscr')                                                                          as paymscr_13,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '14applyPIF')                                                                         as applyPIF_14,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '14applyDU')                                                                          as applyDU_14,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '14applyIIS')                                                                         as applyIIS_14,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '14apply')                                                                            as apply_14,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '15scspaynPIF')                                                                       as scspaynPIF_15,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '15scspaynDU')                                                                        as scspaynDU_15,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '15scspaynIIS')                                                                       as scspaynIIS_15,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '15scspayn')                                                                          as scspayn_15,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '15scspaydPIF')                                                                       as scspaydPIF_15,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '15scspaydDU')                                                                        as scspaydDU_15,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '15scspaydIIS')                                                                       as scspaydIIS_15,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '15scspayd')                                                                          as scspayd_15,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '16dokcard')                                                                          as dokcard_16,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '16dokmenu')                                                                          as dokmenu_16,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names), '16dok')   as dok_16,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '17buyPIF')                                                                           as buyPIF_17,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '17buyDU')                                                                            as buyDU_17,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 '17buyIIS')                                                                           as buyIIS_17,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names), '17buy')   as buy_17,
+
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 'banner_click')                                                                       as banner_click,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 'banner_scrn')                                                                        as banner_scrn,
+             has(if(length(splitted_event_names) > 0 and has(splitted_event_names, '01login') = 0,
+                    arrayPushFront(splitted_event_names, '01login'), splitted_event_names),
+                 'motiv_accept')                                                                       as motiv_accept
+
+      from (
+            select *
+            from (
+                  select appsflyer_id,
+                         date,
+                         platform,
+                         app_version,
+                         dok16_events,
+                         showidea_events,
+                         if(length(splitted_event_names) > length(evnts_logins),
+                            arrayResize(evnts_logins, length(splitted_event_names), arrayReduce('max', evnts_logins)),
+                            evnts_logins) as evnts_logins_prepared,
+                         splitted_event_names
+
+                  from (
+                        select appsflyer_id,
+                               toDate(event_time)                      as date,
+                               app_version,
+                               platform,
+                               groupArray(case
+                                              when my_event in ('16dok', '16dokmenu', '16dokcard')
+                                                  then event_time end) as dok16_events,
+                               groupArray(case
+                                              when my_event in ('043mainideapr', '053showideapr')
+                                                  then event_time end) as showidea_events,
+                               groupArray(my_event)                    as evnts_name,
+                               groupUniqArray(logins)                  as evnts_logins,
+
+                               -- //// Splitting chains of events by 01login events
+                               arraySplit((x, y) -> y, groupArray(my_event), groupArray(if(my_event = '01login', 1, 0))
+                                   )
+                                                                       as splitted_event_names
+                        from (
+                              select event_time
+                                   , appsflyer_id
+                                   , event_name
+                                   , platform
+                                   , app_version
+                                   , case
+                                         when event_name = 'af_login_success' then event_time end as logins
+
+                                   -- //// search for necessary events and apply filters for them
+                                   , case
+                                         when event_name = 'af_login_success' then '01login'
+                                         when event_name = 'af_cabinet_showcase_show' then '021showcase'
+                                         when event_name = 'af_cabinet_showcase_allProducts_scrn' then '022allshowcase'
+
+                                         WHEN event_name = 'af_main_purchase_choose_scrn' then '031pluschoose'
+                                         WHEN event_name = 'af_main_purchase_portfolio_scrn' then '032pluspopolnit'
+                                         WHEN event_name = 'af_main_purchase_portfolio_product_tap'
+                                             then '033plusproduct'
+                                         when event_name = 'af_cabinet_product_scrn' then '034productscrn'
+
+                                         WHEN event_name = 'af_cabinet_main_idea_scrn' then '041mainidea'
+                                         WHEN event_name = 'af_cabinet_main_idea_invest_tap' then '042mainideainv'
+                                         WHEN event_name = 'af_cabinet_main_idea_product_tap' then '043mainideapr'
+                                         WHEN event_name = 'af_cabinet_showcase_idea_scrn' then '051showidea'
+                                         WHEN event_name = 'af_cabinet_showcase_idea_invest_tap' then '052shiwideainv'
+                                         WHEN event_name = 'af_cabinet_showcase_idea_product_tap' then '053showideapr'
+                                         WHEN event_name = 'af_cabinet_product_newpay' then '06neopl'
+
+-- Проверить с инвестидеями: до 40 сек или после 10 сек от данного события не было событий af_cabinet_main_idea_product_tap или af_cabinet_showcase_idea_product_tap
+                                         WHEN event_name = 'af_cabinet_product_replenish' then '07dokport'
+                                         WHEN event_name = 'af_cabinet_product_refill' then '08plusclck'
+                                         WHEN event_name = 'af_cabinet_content_view' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ПИФ', 'PIF')
+                                             then '09productPIF'
+                                         WHEN event_name = 'af_cabinet_content_view' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ДУ', 'DU')
+                                             then '09productDU'
+                                         WHEN event_name = 'af_cabinet_content_view' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ИИС', 'IIS')
+                                             then '09productIIS'
+                                         WHEN event_name = 'af_cabinet_content_view' then '09product'
+                                         WHEN event_name = 'af_content_purchase_start' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ПИФ', 'PIF')
+                                             then '10investPIF'
+                                         WHEN event_name = 'af_content_purchase_start' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ДУ', 'DU')
+                                             then '10investDU'
+                                         WHEN event_name = 'af_content_purchase_start' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ИИС', 'IIS')
+                                             then '10investIIS'
+                                         WHEN event_name = 'af_content_purchase_start' then '10invest'
+                                         WHEN event_name = 'af_content_purchase_step2_end' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ПИФ', 'PIF')
+                                             then '11passportPIF'
+                                         WHEN event_name = 'af_content_purchase_step2_end' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ДУ', 'DU')
+                                             then '11passportDU'
+                                         WHEN event_name = 'af_content_purchase_step2_end' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ИИС', 'IIS')
+                                             then '11passportIIS'
+                                         WHEN event_name = 'af_content_purchase_step2_end' then '11passport'
+                                         WHEN event_name = 'af_content_purchase_step3_end' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ПИФ', 'PIF')
+                                             then '12smsPIF'
+                                         WHEN event_name = 'af_content_purchase_step3_end' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ДУ', 'DU')
+                                             then '12smsDU'
+                                         WHEN event_name = 'af_content_purchase_step3_end' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ИИС', 'IIS')
+                                             then '12smsIIS'
+                                         WHEN event_name = 'af_content_purchase_step3_end' then '12sms'
+                                         WHEN event_name = 'af_cabinet_payment_scrn' then '13paymscr'
+                                         WHEN event_name in ('af_content_purchase_step4_end',
+                                                             'af_cabinet_payment_sbp_tap') and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ПИФ', 'PIF')
+                                             then '14applyPIF'
+                                         WHEN event_name in ('af_content_purchase_step4_end',
+                                                             'af_cabinet_payment_sbp_tap') and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ДУ', 'DU')
+                                             then '14applyDU'
+                                         WHEN event_name in ('af_content_purchase_step4_end',
+                                                             'af_cabinet_payment_sbp_tap') and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ИИС', 'IIS')
+                                             then '14applyIIS'
+                                         WHEN event_name in ('af_content_purchase_step4_end',
+                                                             'af_cabinet_payment_sbp_tap') then '14apply'
+                                         WHEN event_name = 'af_purchase_payment' and
+                                              JSONExtractString(event_value, 'af_type') = '1' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ПИФ', 'PIF')
+                                             then '15scspaynPIF'
+                                         WHEN event_name = 'af_purchase_payment' and
+                                              JSONExtractString(event_value, 'af_type') = '1' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ДУ', 'DU')
+                                             then '15scspaynDU'
+                                         WHEN event_name = 'af_purchase_payment' and
+                                              JSONExtractString(event_value, 'af_type') = '1' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ИИС', 'IIS')
+                                             then '15scspaynIIS'
+                                         WHEN event_name = 'af_purchase_payment' and
+                                              JSONExtractString(event_value, 'af_type') = '1'
+                                             then '15scspayn'
+                                         WHEN event_name = 'af_purchase_payment' and
+                                              JSONExtractString(event_value, 'af_type') = '2' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ПИФ', 'PIF')
+                                             then '15scspaydPIF'
+                                         WHEN event_name = 'af_purchase_payment' and
+                                              JSONExtractString(event_value, 'af_type') = '2' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ДУ', 'DU')
+                                             then '15scspaydDU'
+                                         WHEN event_name = 'af_purchase_payment' and
+                                              JSONExtractString(event_value, 'af_type') = '2' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ИИС', 'IIS')
+                                             then '15scspaydIIS'
+                                         WHEN event_name = 'af_purchase_payment' and
+                                              JSONExtractString(event_value, 'af_type') = '2'
+                                             then '15scspayd'
+                                         WHEN event_name = 'af_cabinet_refill_success' and
+                                              JSONExtractString(event_value, 'af_options') = '0' then '16dokcard'
+                                         WHEN event_name = 'af_cabinet_refill_success' and
+                                              JSONExtractString(event_value, 'af_options') = '1' then '16dokmenu'
+                                         WHEN event_name = 'af_cabinet_refill_success' then '16dok'
+                                         WHEN event_name = 'af_content_purchase_success' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ПИФ', 'PIF')
+                                             then '17buyPIF'
+                                         WHEN event_name = 'af_content_purchase_success' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ДУ', 'DU')
+                                             then '17buyDU'
+                                         WHEN event_name = 'af_content_purchase_success' and
+                                              JSONExtractString(event_value, 'af_product_type') in ('ИИС', 'IIS')
+                                             then '17buyIIS'
+                                         WHEN event_name = 'af_content_purchase_success' then '17buy'
+
+                                         when event_name = 'af_cabinet_banner_click' then 'banner_click'
+                                         when event_name = 'af_cabinet_banner_scrn' then 'banner_scrn'
+                                         when event_name = 'af_cabinet_motivation_accept' then 'motiv_accept'
+                                         else 'unnecessary_event'
+                                  end                                                             as my_event
+                                   , event_value
+                              FROM data t
+
+                                   -- filters
+                              WHERE report in ('android_organic_in_app_events_report',
+                                               'ios_in_app_events_report',
+                                               'android_in_app_events_report',
+                                               'ios_organic_in_app_events_report',
+                                               'huawei_in_app_events_report',
+                                               'huawei_organic_in_app_events_report')
+                                and event_time >
+                                    addDays((select max(event_time) from data),
+                                            -60) --'2022-03-31'
+
+                                and (event_name in (
+                                                    'af_cabinet_banner_click',
+                                                    'af_cabinet_banner_scrn',
+                                                    'af_cabinet_motivation_accept', 'af_cabinet_product_scrn',
+                                                    'af_login_success',
+                                                    'af_cabinet_showcase_show',
+                                                    'af_cabinet_showcase_allProducts_scrn',
+                                                    'af_cabinet_content_view',
+                                                    'af_main_purchase_choose_scrn',
+                                                    'af_main_purchase_portfolio_scrn',
+                                                    'af_main_purchase_portfolio_product_tap',
+                                                    'af_cabinet_payment_scrn',
+                                                    'af_cabinet_main_idea_scrn',
+                                                    'af_cabinet_main_idea_invest_tap',
+                                                    'af_cabinet_main_idea_product_tap',
+                                                    'af_content_purchase_start',
+                                                    'af_content_purchase_step2_end',
+                                                    'af_content_purchase_step3_end',
+                                                    'af_cabinet_payment_scrn',
+                                                    'af_cabinet_product_newpay',
+                                                    'af_cabinet_product_replenish',
+                                                    'af_cabinet_showcase_idea_scrn',
+                                                    'af_cabinet_showcase_idea_invest_tap',
+                                                    'af_cabinet_showcase_idea_product_tap'
+                                  )
+                                  or (event_name = 'af_cabinet_product_refill' and
+                                      JSONExtractString(event_value, 'af_options') = '1')
+                                  or (event_name in ('af_content_purchase_step4_end',
+                                                     'af_cabinet_payment_sbp_tap') and
+                                      JSONExtractString(event_value, 'af_options') <> '3' and
+                                      JSONExtractString(event_value, 'af_payment_system') <> '3')
+                                  or (event_name = 'af_purchase_payment' and
+                                      JSONExtractString(event_value, 'af_options') <> '3' and
+                                      JSONExtractString(event_value, 'af_payment_system') <> '3')
+                                  or (event_name = 'af_cabinet_refill_success' and
+                                      JSONExtractString(event_value, 'af_payment_system') <> '3')
+                                  or (event_name = 'af_content_purchase_success' and
+                                      JSONExtractString(event_value, 'af_payment_system') <> '3')
+                                  )
+                                 )
+                        group by appsflyer_id,
+                                 toDate(event_time),
+                                 app_version,
+                                 platform
+                           )
+                )
+                ARRAY JOIN evnts_logins_prepared
+               , splitted_event_names
+               )
+         )
