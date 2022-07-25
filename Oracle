@@ -1,0 +1,172 @@
+
+-- The code collects various transactions and customer account data for a date starting from the date of the first transaction + 30 days
+
+
+with t_1 as (
+    select INVESTOR_ID, FIRST_OPER_DATE
+    from total
+    where total.FIRST_OPER_DATE >= to_date('2022-01-01', 'yyyy-mm-dd')
+      and DATE_SREZ = (select max(DATE_SREZ) from total)
+      and FIRST_CHANNEL not in ('1', '2', '3')
+),
+     tb_2 as (select i.INVESTOR_ID,
+                     t_1.FIRST_OPER_DATE,
+                     sum(case when i.active_type <> 1 then i.SUM_IN_FIRST else 0 end) --as sum_du_in_first,
+                         + sum(case when i.active_type <> 1 then i.SUM_IN_DOP else 0 end) --as sum_du_in_dop,
+                         + sum(case when i.active_type <> 1 then i.SUM_OUT else 0 end) --as sum_du_out,
+                         + sum(case
+                                   when i.active_type = 1 and i.IS_PIF_DU = 0 then i.SUM_IN_FIRST
+                                   else 0 end) --as sum_pif_in_first,
+                         + sum(case when i.active_type = 1 and i.IS_PIF_DU = 0 then i.SUM_IN_DOP else 0 end)-- as sum_pif_in_dop,
+                         +
+                     sum(case when i.active_type = 1 and i.IS_PIF_DU = 0 then i.SUM_OUT else 0 end) --as sum_pif_out,
+                         as net_income
+              from (
+
+                  -- //// Operations
+                       select cf.INVESTOR_ID,
+                              nvl2(cf.FUND_ID, cf.PIF_DU_CONTR_ID, cf.CONTRACT_ID)           as CONTRACT_ID,
+                              nvl(cf.FUND_ID, c.COMPOSITE_ID)                                   product_id,
+                              case
+                                    when cf.FUND_ID is not null then 1
+                                    when c.ORG_ID in (1, 2) then 2
+                                    when c.ORG_ID in (3, 4) then 3
+                                    when c.ORG_ID in (5, 6, 7) then 4 end as active_type,
+                              case
+                                  when cf.OPERATION_NAME like ('Межбалансовый%')
+                                      or cf.IS_EXCHANGE = 1 then 1
+                                  else 0 end                                                 as is_exchange,
+                              nvl2(cf.PIF_DU_CONTR_ID, 1, 0)                                 as is_pif_du,
+                              sum(case
+                                      when nvl(cf.ASSETFLOW_OUT_AMOUNT, 0) + nvl(+cf.CASHFLOW_OUT_AMOUNT, 0) +
+                                           nvl(cf.PIFDU_OUT_AMOUNT, 0) +
+                                           nvl(cf.MF_OUT_AMOUNT, 0) + nvl(cf.MF_EXCHANGE_OUT_AMOUNT, 0) <> 0
+                                          then round((nvl(cf.AMOUNT, 0) -
+                                                      nvl2(cf.FUND_ID, nvl(cf.PIFDU_OUT_AMOUNT, 0), 0)) *
+                                                     cu.RATE_TO_RUB, 2)
+                                      else 0 end)                                            as SUM_OUT,
+                              sum(case
+                                      when nvl(cf.ASSETFLOW_IN_AMOUNT, 0) +
+                                           nvl(cf.CASHFLOW_IN_AMOUNT, 0) +
+                                           nvl(cf.PIFDU_IN_AMOUNT, 0) +
+                                           nvl(cf.MF_IN_AMOUNT, 0) +
+                                           nvl(cf.MF_EXCHANGE_IN_AMOUNT, 0) <> 0 and
+                                           cf.FIRST_OPERATION_ID <> cf.OPERATION_ID
+                                          then round((nvl(cf.AMOUNT, 0) +
+                                                      nvl2(cf.FUND_ID, nvl(cf.PIFDU_IN_AMOUNT, 0), 0)) * cu.RATE_TO_RUB,
+                                                     2)
+                                      else 0 end)                                            as SUM_IN_DOP,
+                              sum(case
+                                      when nvl(cf.ASSETFLOW_IN_AMOUNT, 0) +
+                                           nvl(cf.CASHFLOW_IN_AMOUNT, 0) +
+                                           nvl(cf.PIFDU_IN_AMOUNT, 0) +
+                                           nvl(cf.MF_IN_AMOUNT, 0) +
+                                           nvl(cf.MF_EXCHANGE_IN_AMOUNT, 0) <> 0 and
+                                           cf.FIRST_OPERATION_ID = cf.OPERATION_ID
+                                          then round((nvl(cf.AMOUNT, 0) +
+                                                      nvl2(cf.FUND_ID, nvl(cf.PIFDU_IN_AMOUNT, 0), 0)) * cu.RATE_TO_RUB,
+                                                     2)
+                                      else 0 end)                                            as SUM_IN_FIRST
+                       from CASHFLOW cf
+                                left join CONTRACT c on cf.CONTRACT_ID = c.CONTRACT_ID
+                           and c.org_id in (1, 2, 3, 4, 5, 6, 7)
+                                left join currency_rate cu
+                                          on cf.WIRING_DAY = cu.RATE_DATE and cf.CURRENCY_ID = cu.CURRENCY_ID
+                                inner join t_1 on cf.INVESTOR_ID = t_1.INVESTOR_ID and
+                                                  cf.WIRING_DAY between t_1.FIRST_OPER_DATE and t_1.FIRST_OPER_DATE + interval '30' day
+                       group by cf.INVESTOR_ID,
+                                nvl2(cf.FUND_ID, cf.PIF_DU_CONTR_ID, cf.CONTRACT_ID),
+                                nvl(cf.FUND_ID, c.COMPOSITE_ID),
+                                case
+                                    when cf.FUND_ID is not null then 1
+                                    when c.ORG_ID in (1, 2) then 2
+                                    when c.ORG_ID in (3, 4) then 3
+                                    when c.ORG_ID in (5, 6, 7) then 4 end,
+                                case
+                                    when cf.OPERATION_NAME like ('Межбалансовый%')
+                                        or cf.IS_EXCHANGE = 1 then 1
+                                    else 0 end,
+                                nvl2(cf.PIF_DU_CONTR_ID, 1, 0)) i
+                       inner join t_1 on t_1.INVESTOR_ID = i.INVESTOR_ID
+              where i.IS_EXCHANGE = 0
+              group by i.INVESTOR_ID, t_1.FIRST_OPER_DATE),
+     tb_3 as (
+         -- //// union different kind of sources of operations and calculate actives value by them
+
+         select i.INVESTOR_ID,
+                sum(case when i.active_type <> 1 then i.active_rub else 0 end) -
+                sum(case when i.active_type = 1 and i.IS_PIF_DU = 1 then i.active_rub else 0 end) +
+                sum(case when i.active_type = 1 then i.active_rub else 0 end) as actives
+         from (
+                  select c.INVESTOR_ID,
+                         a.contract_id,
+                         c.COMPOSITE_ID                                             product_id,
+                         case
+                             when c.org_id in  (1, 2) then 2
+                             when c.ORG_ID in(3, 4) then 3 end            as active_type,
+                         ROUND(SUM(nvl(a.position_value * r.rate_to_rub, 0)), 2) as active_rub,
+                         0                                                       as is_pif_du
+                  from contract c,
+                       contract_aum a,
+                       currency_rate r,
+                       tb_2 u
+                  where c.contract_id = a.contract_id
+                    and a.currency_id = r.currency_id
+                    and a.aum_date = r.rate_date
+                    and c.INVESTOR_ID = u.INVESTOR_ID
+                    and a.AUM_DATE = u.FIRST_OPER_DATE + interval '30' day
+                    and c.org_id in  c.ORG_ID in (5, 6, 7)
+                  group by c.investor_id, a.contract_id, c.composite_id, -- u.date_srez, u.date_user_id,
+                           case
+                               when c.org_id in (1, 2) then 2
+                               when c.ORG_ID in (3, 4) then 3 end
+                  having SUM(nvl(a.position_value * r.rate_to_rub, 0)) > 0
+                  union all
+                  select m.INVESTOR_ID,
+                         m.CONTRACT_ID                                             as contract_id,
+                         m.fund_id                                                    product_id,
+                         1                                                         as active_type,
+                         nvl(ROUND(sum(
+                                           case
+                                               when m.oper_sign = 1 then m.shares_qty
+                                               when m.oper_sign = -1 then (-1) * m.shares_qty
+                                               else 0 end) * n.share_value, 2), 0) as active_rub,
+                         case when m.CONTRACT_ID is not null then 1 else 0 end     as is_pif_du
+                  from tb_2 u
+                           inner join OPER_ACT m
+                                      on m.INVESTOR_ID = u.INVESTOR_ID and m.wiring_day <= u.FIRST_OPER_DATE
+                           left join fund n on m.fund_id = n.fund_id and n.day_date = u.FIRST_OPER_DATE
+                  where n.SHARE_VALUE is not null
+                  group by m.INVESTOR_ID,
+                           m.CONTRACT_ID,
+                           m.fund_id,
+                           n.share_value
+                  having sum(
+                                 case
+                                     when m.oper_sign = 1 then m.shares_qty
+                                     when m.oper_sign = -1 then (-1) * m.shares_qty
+                                     else 0 end) > 0
+                  union all
+                  select a.INVESTOR_ID,
+                         a.CONTRACT_ID,
+                         c.composite_id product_id,
+                         4        as    active_type,
+                         a.AMOUNT as    active_rub,
+                         0        as    is_pif_du
+                  from fincom a,
+                       contract c,
+                       tb_2 u
+                  where a.contract_id = c.contract_id
+                    and a.AUM_DATE = u.FIRST_OPER_DATE
+                    and a.INVESTOR_ID = u.INVESTOR_ID
+                    and a.AMOUNT > 0) i
+         group by i.INVESTOR_ID
+         having sum(i.active_rub) > 0)
+select tb_2.INVESTOR_ID,
+       FIRST_OPER_DATE,
+       net_income,
+       case when net_income >= 10000 then 1 else 0 end is_ni_more_10tsnd,
+       tb_3.actives
+from tb_2
+         left join tb_3 on tb_3.investor_id = tb_2.INVESTOR_ID
+;
