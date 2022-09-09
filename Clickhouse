@@ -339,8 +339,7 @@ from (
                                          WHEN event_name = 'af_cabinet_showcase_idea_invest_tap' then '052shiwideainv'
                                          WHEN event_name = 'af_cabinet_showcase_idea_product_tap' then '053showideapr'
                                          WHEN event_name = 'af_cabinet_product_newpay' then '06neopl'
-
--- Проверить с инвестидеями: до 40 сек или после 10 сек от данного события не было событий af_cabinet_main_idea_product_tap или af_cabinet_showcase_idea_product_tap
+                                        
                                          WHEN event_name = 'af_cabinet_product_replenish' then '07dokport'
                                          WHEN event_name = 'af_cabinet_product_refill' then '08plusclck'
                                          WHEN event_name = 'af_cabinet_content_view' and
